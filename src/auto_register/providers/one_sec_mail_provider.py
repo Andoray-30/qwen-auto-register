@@ -9,7 +9,7 @@ import tempfile
 import time
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 import httpx
 
@@ -80,7 +80,7 @@ class MailTmProvider:
         self,
         email: str,
         subject_contains: Optional[str] = None,
-        from_contains: Optional[str] = None,
+        from_contains: Optional[str] = None, check_stop: Optional[Callable[[], bool]] = None
     ) -> str:
         """Poll Mail.tm for activation email and extract link."""
         pw = self._password if email == self._email else None
@@ -132,7 +132,7 @@ class MailTmProvider:
                 url = _extract_activation_url_from_text(text)
                 if url:
                     return url
-            time.sleep(self._poll_interval)
+            if check_stop and check_stop(): return "" ; time.sleep(self._poll_interval)
         raise TimeoutError(f"No activation email within {self._timeout}s for {email}")
 
 
@@ -236,7 +236,7 @@ class OneSecMailProvider:
         self,
         email: str,
         subject_contains: Optional[str] = None,
-        from_contains: Optional[str] = None,
+        from_contains: Optional[str] = None, check_stop: Optional[Callable[[], bool]] = None
     ) -> str:
         """Poll inbox until activation email arrives, then extract first https link.
 
@@ -283,7 +283,7 @@ class OneSecMailProvider:
                 if url:
                     return url
 
-            time.sleep(self._poll_interval)
+            if check_stop and check_stop(): return "" ; time.sleep(self._poll_interval)
 
         raise TimeoutError(
             f"No activation email received within {self._timeout}s for {email}"
@@ -409,7 +409,7 @@ class CloudMailProvider:
         self,
         email: str,
         subject_contains: Optional[str] = None,
-        from_contains: Optional[str] = None,
+        from_contains: Optional[str] = None, check_stop: Optional[Callable[[], bool]] = None
     ) -> str:
         """Poll emailList endpoint and extract activation url."""
         start = time.time()
@@ -454,6 +454,6 @@ class CloudMailProvider:
                 if url:
                     return url
 
-            time.sleep(self._poll_interval)
+            if check_stop and check_stop(): return "" ; time.sleep(self._poll_interval)
 
         raise TimeoutError(f"No activation email received within {self._timeout}s for {email}")

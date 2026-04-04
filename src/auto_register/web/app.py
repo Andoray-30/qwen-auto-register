@@ -357,7 +357,7 @@ def create_app() -> FastAPI:
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 AutoRegister 控制台</h1>
+            <h1>🚀 AutoRegister 控制台 <span style="font-size: 14px; opacity: 0.6; vertical-align: middle;">v2.9.0-CPA</span></h1>
             <p>一键自动注册、激活、认证 Qwen账户</p>
         </div>
 

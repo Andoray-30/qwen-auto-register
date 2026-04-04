@@ -41,6 +41,7 @@ def poll_auth_status(
     poll_interval: float = 2.0,
     timeout_seconds: float = 300.0,
     on_wait: Optional[Callable[[], None]] = None,
+    check_stop: Optional[Callable[[], bool]] = None,
 ) -> tuple[bool, Optional[str]]:
     """Poll auth status until ok/error/timeout.
 
@@ -51,6 +52,9 @@ def poll_auth_status(
 
     with httpx.Client(timeout=20.0) as client:
         while time.time() < deadline:
+            if check_stop and check_stop():
+                return False, "Aborted by user"
+                
             try:
                 resp = client.get(url, headers=_headers(management_key))
                 resp.raise_for_status()

@@ -158,7 +158,11 @@ class QwenPortalRunner:
                     self._log("[Portal] 在等待邮件前收到停止请求，放弃此次注册")
                     return False
                     
-                activation_url = mail_provider.wait_for_activation_link(creds.email)
+                activation_url = mail_provider.wait_for_activation_link(creds.email, check_stop=self._check_stop)
+                if not activation_url:
+                    self._log("[Portal] 等待邮件时收到停止请求或超时")
+                    return False
+                
                 self._log("5. 收到激活邮件")
                 
                 if self._check_stop():
@@ -212,6 +216,10 @@ class QwenPortalRunner:
         self._log(f"[ProxyLink] 已打开登录链接，当前页面: {self._current_url(page)}")
 
         self._log(f"[ProxyLink] 使用本次注册凭据执行登录: {creds.email}")
+        if self._check_stop():
+            self._log("[ProxyLink] 收到停止请求，退出")
+            return False
+            
         self._complete_two_stage_auth(page, creds)
 
         def on_wait() -> None:
@@ -224,6 +232,7 @@ class QwenPortalRunner:
             poll_interval=2.0,
             timeout_seconds=300.0,
             on_wait=on_wait,
+            check_stop=self._check_stop,
         )
         if not ok:
             self._log(f"[ProxyLink] 认证状态失败: {err}")
@@ -246,6 +255,10 @@ class QwenPortalRunner:
         max_rounds = 8
 
         for round_idx in range(1, max_rounds + 1):
+            if self._check_stop():
+                self._log("[ProxyLink] 收到停止请求，放弃两阶段认证")
+                return
+                
             self._log(
                 f"[ProxyLink][Round {round_idx}/{max_rounds}] 检查登录与确认页面，URL={self._current_url(page)}"
             )
@@ -407,11 +420,11 @@ class QwenPortalRunner:
         for sel in selectors:
             try:
                 btn = page.locator(sel).first
-                btn.wait_for(state="visible", timeout=3000)
-                btn.click()
-                self._log(f"[ProxyLink][Round {round_idx}] 已自动点击授权按钮，selector={sel}")
-                page.wait_for_timeout(2000)
-                return True
+                if btn.count() > 0 and btn.is_visible(timeout=500):
+                    btn.click()
+                    self._log(f"[ProxyLink][Round {round_idx}] 已自动点击授权按钮，selector={sel}")
+                    page.wait_for_timeout(2000)
+                    return True
             except Exception:
                 continue
 
